@@ -5,7 +5,7 @@ RF24 radio(9, 10); // CE, CSN
 const byte addresses[][6] = {"00001", "00002"};
 #define Relay 8
 #define Dong 4
-
+#define interruptPin 2
 unsigned long currentMillis;
 unsigned long prevMillis = 0;
 unsigned long txIntervalMillis = 300;
@@ -16,12 +16,24 @@ int flag = 0;
 enum State
 {
   ChuaCoMu,
-  DaCaiMu
+  DaCaiMu,
+  Bypass
 };
 State state;
 
-void setup()
+void NoRF()
 {
+  if (state != Bypass)
+    state = Bypass;
+  else{
+  digitalWrite(Relay,LOW);
+    state = ChuaCoMu;
+}}
+
+void setup()
+{pinMode(2, INPUT);
+  attachInterrupt(digitalPinToInterrupt(interruptPin), NoRF, RISING);
+  
   pinMode(Relay, OUTPUT);
   pinMode(Dong, INPUT);
   Serial.begin(9600);
@@ -72,6 +84,7 @@ void loop()
     switch (state)
     {
     case ChuaCoMu:
+    if(digitalRead(Relay))digitalWrite(Relay,LOW);
       Serial.println("Vao Xet Khi Chua Co Mu");
       if (radio.available())
       {
@@ -104,6 +117,10 @@ void loop()
         state = ChuaCoMu;
         digitalWrite(Relay, LOW);
       }
+      break;
+    case Bypass:
+      Serial.println("Dang Bypass");
+      digitalWrite(Relay, HIGH);
       break;
     }
   }
