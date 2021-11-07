@@ -9,7 +9,9 @@ float rollLimitL = 0.09;
 float pitchLimitH = -2;
 float pitchLimitL = -4.60;
 unsigned long DaGui = 0;
-//Cài Mũ D8
+unsigned long CBGui;
+
+//Cài Mũ D8 Hall Sensor
 //Đội Mũ D7 (Tam Thoi)
 //CE CS gắn 9 10
 RF24 radio(9, 10);
@@ -41,6 +43,17 @@ Sleep SleepStatus = Stop;
 unsigned long NowSleep = 0;
 
 unsigned long StartSleep = 0;
+
+void StartSleepingBlock(){
+  if (SleepStatus != Start)
+    {
+      SleepStatus = Start;
+      StartSleep = millis();
+      NowSleep = 0;
+    }
+    else
+      NowSleep = millis();
+}
 
 void BatDauDocGiaToc()
 {
@@ -111,10 +124,11 @@ bool DoiMuTrenDau()
   pitchF = 0.94 * pitchF + 0.06 * pitch;
 
   // MMA8452Q I2C address is 0x1C(28)
-  Serial.print("Roll: ");
-  Serial.println(rollF);
-  Serial.print("PitchF");
-  Serial.println(pitchF);
+  //Xet cai roll pitch gioi han o day nhe
+//  Serial.print("Roll: ");
+//  Serial.println(rollF);
+//  Serial.print("PitchF");
+//  Serial.println(pitchF);
   unsigned long time_now = 0;
 
   time_now = millis();
@@ -160,7 +174,7 @@ void setup()
 {
   Wire.begin();
   radio.begin();
-  Serial.begin(9600); // giao tiếp Serial với baudrate 9600
+  Serial.begin(9600); //
   Serial.println("Ready.........");
 pinMode(2, INPUT);
  
@@ -174,26 +188,22 @@ pinMode(2, INPUT);
   pinMode(DenVang, OUTPUT);
   pinMode(DenDo, OUTPUT);
   BatDauDocGiaToc();
+   radio.setChannel(1);
+    // set time between retries and max no. of retries
+    radio.setRetries(4, 10);
+
+   
 }
 
 void loop()
 {
-  Serial.println("vl lun dau cat moi");
-  Serial.println(digitalRead(2));
+  
   if (digitalRead(CaiMu) != 0)
   {
     digitalWrite(DenDo, HIGH);
     digitalWrite(DenVang, LOW);
     digitalWrite(DenXanh, LOW);
-    if (SleepStatus != Start)
-    {
-      SleepStatus = Start;
-      StartSleep = millis();
-      NowSleep = millis();
-    }
-    else
-
-      NowSleep = millis();
+    StartSleepingBlock();
     state = ChuaCaiMu;
   }
   switch (state)
@@ -206,14 +216,7 @@ void loop()
       digitalWrite(DenDo, LOW);
       digitalWrite(DenVang, HIGH);
       digitalWrite(DenXanh, LOW);
-      if (SleepStatus != Start)
-      {
-        SleepStatus = Start;
-        StartSleep = millis();
-        NowSleep = millis();
-      }
-      else
-        NowSleep = millis();
+      StartSleepingBlock();
     }
     break;
 
@@ -225,15 +228,13 @@ void loop()
       digitalWrite(DenVang, LOW);
       digitalWrite(DenXanh, HIGH);
       state = CaiMuDoiLen;
+      radio.stopListening();
+        const char text[] = "1";
+        radio.write(&text, 1); //Gửi dữ liệu có trong mảng text
+        Serial.println("Gui Lan Dau");
+        DaGui = millis();
     }
-    if (SleepStatus != Start)
-    {
-      SleepStatus = Start;
-      StartSleep = millis();
-      NowSleep = 0;
-    }
-    else
-      NowSleep = millis();
+    StartSleepingBlock();
     break;
 
   case CaiMuDoiLen:
@@ -244,27 +245,16 @@ void loop()
       digitalWrite(DenDo, LOW);
       digitalWrite(DenVang, HIGH);
       digitalWrite(DenXanh, LOW);
-      if (SleepStatus != Start)
-      {
-        SleepStatus = Start;
-        StartSleep = millis();
-        NowSleep = millis();
-      }
-      else
-        NowSleep = millis();
+      StartSleepingBlock();
     }
     else
     {
       if (SleepStatus != Stop)
         SleepStatus = Stop;
       DungDocGiaToc();
-      radio.stopListening();
-        const char text[] = "1";
-        radio.write(&text, 1); //Gửi dữ liệu có trong mảng text
-
-        Serial.println("Gui Xong");
-      unsigned long CBGui = millis();
-      if (CBGui - DaGui >= 500)
+      
+      CBGui = millis();
+      if (CBGui - DaGui >= 200)
       {
         radio.stopListening();
         const char text[] = "1";
