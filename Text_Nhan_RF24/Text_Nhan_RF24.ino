@@ -8,7 +8,11 @@ const byte addresses[][6] = {"00001", "00002"};
 #define interruptPin 2
 unsigned long currentMillis;
 unsigned long prevMillis = 0;
-unsigned long txIntervalMillis = 300;
+unsigned long ThoigianCoMu, ThoigianKhongMu;
+unsigned long ThenCoMu = 0;
+unsigned long ThenKhongMu = 0;
+unsigned long NowKhongMu;
+unsigned long NowCoMu; 
 char ans[1];
 const char test[] = "1";
 int flag = 0;
@@ -23,17 +27,40 @@ State state;
 
 void NoRF()
 {
-  if (state != Bypass)
+  if (state != Bypass){
     state = Bypass;
-  else{
-  digitalWrite(Relay,LOW);
+    ThenKhongMu = millis();
+  }
+  else
+  {
+    digitalWrite(Relay, LOW);
     state = ChuaCoMu;
-}}
+  }
+}
+
+void TinhThoiGianHoatDong()
+{
+  if ((NowKhongMu - ThenKhongMu) >= 1000 && NowKhongMu > ThenKhongMu)
+  {
+  
+    ThoigianKhongMu += 1;
+    ThenKhongMu = millis() + (NowKhongMu - ThenKhongMu - 1000);
+    
+  }
+ 
+  if (  (NowCoMu - ThenCoMu) >= 1000  && NowCoMu > ThenCoMu)
+  {
+    ThoigianCoMu += 1;
+    ThenCoMu = millis() + (NowCoMu - ThenCoMu - 1000);
+   
+  }
+}
 
 void setup()
-{pinMode(2, INPUT);
+{
+  pinMode(2, INPUT);
   attachInterrupt(digitalPinToInterrupt(interruptPin), NoRF, RISING);
-  
+
   pinMode(Relay, OUTPUT);
   pinMode(Dong, INPUT);
   Serial.begin(9600);
@@ -79,49 +106,58 @@ void XetMu()
 void loop()
 {
   radio.startListening();
+
+  //Serial.println(state);
+  switch (state)
   {
-    Serial.println(state);
-    switch (state)
+  case ChuaCoMu:
+    if (digitalRead(Relay))
+      digitalWrite(Relay, LOW);
+    Serial.println("Vao Xet Khi Chua Co Mu");
+    if (radio.available())
     {
-    case ChuaCoMu:
-    if(digitalRead(Relay))digitalWrite(Relay,LOW);
-      Serial.println("Vao Xet Khi Chua Co Mu");
+      XetMu();
+      prevMillis = millis();
+    }
+    if (flag == 1)
+    {
+      Serial.println("DaCaiMu");
+      state = DaCaiMu;
+      digitalWrite(Relay, HIGH);
+      ThenCoMu = millis();
+      NowCoMu = millis();
+    }
+    break;
+  case DaCaiMu:
+    NowCoMu = millis();
+    Serial.println("Dang CaiMu");
+    currentMillis = millis();
+    if (currentMillis - prevMillis >= 500)
+    {
+      flag = 0;
+      Serial.println("Vao Xet");
       if (radio.available())
       {
         XetMu();
         prevMillis = millis();
       }
-      if (flag == 1)
-      {
-        Serial.println("DaCaiMu");
-        state = DaCaiMu;
-        digitalWrite(Relay, HIGH);
-      }
-      break;
-    case DaCaiMu:
-
-      Serial.println("Dang CaiMu");
-      currentMillis = millis();
-      if (currentMillis - prevMillis >= 500)
-      {
-        flag = 0;
-        Serial.println("Vao Xet");
-        if (radio.available())
-        {
-          XetMu();
-          prevMillis = millis();
-        }
-      }
-      if (flag != 1)
-      {
-        state = ChuaCoMu;
-        digitalWrite(Relay, LOW);
-      }
-      break;
-    case Bypass:
-      Serial.println("Dang Bypass");
-      digitalWrite(Relay, HIGH);
-      break;
     }
+    if (flag != 1)
+    {
+      state = ChuaCoMu;
+      digitalWrite(Relay, LOW);
+      
+    }
+    break;
+  case Bypass:
+    NowKhongMu = millis();
+    Serial.println("Dang Bypass");
+    digitalWrite(Relay, HIGH);
+    break;
   }
+  TinhThoiGianHoatDong();
+   Serial.print("Thoi gian \t");
+   Serial.print(ThoigianCoMu);
+   Serial.print("\t Thoi gian \t");
+   Serial.println(ThoigianKhongMu);
 }
