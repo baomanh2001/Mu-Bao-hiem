@@ -12,7 +12,7 @@ unsigned long prevMillis = 0;
 unsigned long txIntervalMillis = 300; 
 char ans[1];
 const char test[]="1";
-int flag =0;
+int flag = 0;
 
 enum State{ChuaCoMu, DaCaiMu}; 
 State state ;
@@ -25,9 +25,9 @@ void setup()
   Serial.println("READY..........");
   radio.begin();
   //radio.openWritingPipe(addresses[0]); // 00001
- radio.openReadingPipe(0, addresses[1]); // 00002
+ radio.openReadingPipe(1, addresses[1]); // 00002
  
-  radio.setPALevel(RF24_PA_MIN);
+  radio.setPALevel(1);
   state = ChuaCoMu;
    Serial.println("READY..........");  
   radio.startListening();
